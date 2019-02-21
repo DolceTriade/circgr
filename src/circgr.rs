@@ -77,7 +77,7 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>) -> Gesture {
     let mut gesture = Gesture::default();
 
     for (id, points) in raw_traces {
-        let info = compute_centroid_and_path_length(&points);
+        let info = preprocess_trace(&points);
     }
 
     gesture
@@ -95,7 +95,7 @@ struct TraceInfo {
     end_time: u32,
 }
 
-fn compute_centroid_and_path_length(points: &Vec<Point>) -> TraceInfo {
+fn preprocess_trace(points: &Vec<Point>) -> TraceInfo {
     let mut info = TraceInfo::default();
     info.start_time = points[0].timestamp;
     info.end_time = points[0].timestamp;
