@@ -117,5 +117,9 @@ fn compute_centroid_and_path_length(points: &Vec<Point>) -> TraceInfo {
             info.end_time = p.timestamp;
         }
     }
+
+    info.centroid.x = info.centroid.x / points.len() as f64;
+    info.centroid.y = info.centroid.x / points.len() as f64;
+
     info
 }
