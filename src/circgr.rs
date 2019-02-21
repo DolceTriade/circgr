@@ -68,16 +68,25 @@ pub struct Gesture {
 }
 
 impl Gesture {
-    fn new(raw_traces: &HashMap<u32, Vec<Point>>) -> Self {
-        build_gesture(&raw_traces)
+    fn new(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Self {
+        build_gesture(&raw_traces, sample_resolution)
     }
 }
 
-fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>) -> Gesture {
+fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Gesture {
     let mut gesture = Gesture::default();
+
 
     for (id, points) in raw_traces {
         let info = preprocess_trace(&points);
+        let interval = info.path_length / sample_resolution as f64;
+        if interval < 0.5_f64 {
+            gesture.anchors.insert(*id, info.centroid.clone());
+            continue;
+        }
+    }
+
+    if gesture.anchors.is_empty() {
     }
 
     gesture
@@ -95,7 +104,7 @@ struct TraceInfo {
     end_time: u32,
 }
 
-fn preprocess_trace(points: &Vec<Point>) -> TraceInfo {
+fn preprocess_trace(points: &[Point]) -> TraceInfo {
     let mut info = TraceInfo::default();
     info.start_time = points[0].timestamp;
     info.end_time = points[0].timestamp;
@@ -122,4 +131,16 @@ fn preprocess_trace(points: &Vec<Point>) -> TraceInfo {
     info.centroid.y = info.centroid.x / points.len() as f64;
 
     info
+}
+
+fn compute_centroid(points: &[Point]) -> Point {
+    let mut centroid = Point::default();
+    for p in points {
+        centroid.x += p.x;
+        centroid.y += p.y;
+    }
+    centroid.x = centroid.x / points.len() as f64;
+    centroid.y = centroid.y / points.len() as f64;
+
+    centroid
 }
