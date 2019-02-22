@@ -75,10 +75,14 @@ impl Gesture {
 
 fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Gesture {
     let mut gesture = Gesture::default();
+    let mut trace_info : HashMap<u32, TraceInfo> = HashMap::default();
 
-
+    // Preprocess the trace to find basic metadata like start/end times, path length, and centroid.
+    // Also decide if each trace will be an anchor. An anchor is a trace that moves less than the
+    // interval calculated based on the sampling resolution.
     for (id, points) in raw_traces {
-        let info = preprocess_trace(&points);
+        trace_info.insert(*id, preprocess_trace(&points));
+        let info = &trace_info[id];
         let interval = info.path_length / sample_resolution as f64;
         if interval < 0.5_f64 {
             gesture.anchors.insert(*id, info.centroid.clone());
@@ -87,7 +91,22 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
     }
 
     if gesture.anchors.is_empty() {
+        let mut first: Vec<Point> = vec![];
+        for points in raw_traces.values() {
+            first.push(points[0].clone());
+        }
+        gesture.centroid = compute_centroid(&first[..])
+    } else {
+        let first: Vec<Point> = gesture.anchors.values().cloned().collect();
+        gesture.centroid = compute_centroid(&first[..]);
     }
+
+    // Real work done here. Resample each trace and break it down into each direction
+    // for every point.
+    for (id, points) in raw_traces {
+
+    }
+
 
     gesture
 }
