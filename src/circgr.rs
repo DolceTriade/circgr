@@ -75,7 +75,7 @@ impl Gesture {
 
 fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Gesture {
     let mut gesture = Gesture::default();
-    let mut trace_info : HashMap<u32, TraceInfo> = HashMap::default();
+    let mut trace_info: HashMap<u32, TraceInfo> = HashMap::default();
 
     // Preprocess the trace to find basic metadata like start/end times, path length, and centroid.
     // Also decide if each trace will be an anchor. An anchor is a trace that moves less than the
@@ -103,10 +103,7 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
 
     // Real work done here. Resample each trace and break it down into each direction
     // for every point.
-    for (id, points) in raw_traces {
-
-    }
-
+    for (id, points) in raw_traces {}
 
     gesture
 }
@@ -162,4 +159,43 @@ fn compute_centroid(points: &[Point]) -> Point {
     centroid.y = centroid.y / points.len() as f64;
 
     centroid
+}
+
+fn process_trace(points: &[Point], centroid: &Point, info: &TraceInfo, sample_resolution: u32) -> (Trace, DirectionalEvents, TemporalEvents) {
+    let interval = info.path_length / sample_resolution as f64;
+    let mut d = 0.0_f64;
+    let mut trace_cos = 0.0_f64;
+    let mut trace_sin = 0.0_f64;
+    let mut directional_events = DirectionalEvents::default();
+    let mut temporal_events = TemporalEvents::default();
+    let mut trace = Trace::default();
+
+    let mut previous_observation = 0.0_f64;
+
+    for i in 1..points.len() {
+        let mut distance = distance(points[i], points[i-1]);
+
+        if d + distance >= interval {
+            let mut previous_point = points[i - 1].clone();
+
+            while d + distance >= interval {
+                let t = (((interval - d) / distance).max(0.0_f64)).min(1.0_f64);
+                let point = Point {
+                    x: (1.0_f64 - t) * previous_point.x + t * points[i].x,
+                    y: (1.0_f64 - t) * previous_point.y + t * points[i].y,
+                };
+
+                let observation = 
+            }
+        }
+    }
+}
+
+fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
+    let mut angle = (point.y - previous_point.y).atan2(point.x - previous_point.x);
+    if (angle < 0) {
+        angle += (2 * std::f64::consts::PI);
+    }
+    
+    angle
 }
