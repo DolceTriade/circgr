@@ -161,7 +161,12 @@ fn compute_centroid(points: &[Point]) -> Point {
     centroid
 }
 
-fn process_trace(points: &[Point], centroid: &Point, info: &TraceInfo, sample_resolution: u32) -> (Trace, DirectionalEvents, TemporalEvents) {
+fn process_trace(
+    points: &[Point],
+    centroid: &Point,
+    info: &TraceInfo,
+    sample_resolution: u32,
+) -> (Trace, DirectionalEvents, TemporalEvents) {
     let interval = info.path_length / sample_resolution as f64;
     let mut d = 0.0_f64;
     let mut trace_cos = 0.0_f64;
@@ -173,29 +178,75 @@ fn process_trace(points: &[Point], centroid: &Point, info: &TraceInfo, sample_re
     let mut previous_observation = 0.0_f64;
 
     for i in 1..points.len() {
-        let mut distance = distance(points[i], points[i-1]);
+        let mut distance = distance(&points[i], &points[i - 1]);
 
         if d + distance >= interval {
             let mut previous_point = points[i - 1].clone();
 
             while d + distance >= interval {
                 let t = (((interval - d) / distance).max(0.0_f64)).min(1.0_f64);
-                let point = Point {
-                    x: (1.0_f64 - t) * previous_point.x + t * points[i].x,
-                    y: (1.0_f64 - t) * previous_point.y + t * points[i].y,
-                };
+                let point = PointBuilder::default()
+                    .x((1.0_f64 - t) * previous_point.x + t * points[i].x)
+                    .y((1.0_f64 - t) * previous_point.y + t * points[i].y)
+                    .build()
+                    .unwrap();
 
-                let observation = 
+                let observation = compute_observation(&previous_point, &point);
+                let (sin, cos) = observation.sin_cos();
+                trace_cos += cos;
+                trace_sin += sin;
+                let direction = get_direction(observation);
+                let cdirection = get_centripetal_direction(&previous_point, &point, &info.centroid);
+
             }
         }
     }
+
+    return (trace, directional_events, temporal_events);
 }
 
 fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
     let mut angle = (point.y - previous_point.y).atan2(point.x - previous_point.x);
-    if (angle < 0) {
-        angle += (2 * std::f64::consts::PI);
+    if (angle < 0.0_f64) {
+        angle += (2.0_f64 * std::f64::consts::PI);
     }
-    
+
     angle
+}
+
+fn get_direction(mut observation: f64) -> Direction {
+    use std::f64::consts::PI;
+    const MARGIN: f64 = PI / 18.0_f64;
+    const PI_OVER_2: f64 = PI / 2.0_f64;
+    const THREE_PI_OVER_4: f64 = 3.0_f64 * PI / 4.0_f64;
+
+    observation %= 2.0_f64 * PI;
+
+    if (observation >= 0.0_f64 && observation < MARGIN) {
+        return Direction::Right;
+    } else if (observation >= MARGIN && observation < PI_OVER_2 - MARGIN) {
+        return Direction::UpRight;
+    } else if (observation >= PI_OVER_2 - MARGIN && observation < PI_OVER_2 + MARGIN) {
+        return Direction::Up;
+    } else if (observation >= PI_OVER_2 + MARGIN && observation < PI - MARGIN) {
+        return Direction::UpLeft;
+    } else if (observation >= PI - MARGIN && observation < PI + MARGIN) {
+        return Direction::Left;
+    } else if (observation >= PI + MARGIN && observation < THREE_PI_OVER_4 - MARGIN) {
+        return Direction::DownLeft;
+    } else if (observation >= THREE_PI_OVER_4 - MARGIN && observation > THREE_PI_OVER_4 + MARGIN) {
+        return Direction::Down;
+    } else if (observation >= THREE_PI_OVER_4 + MARGIN && observation > 2.0_f64 * PI - MARGIN) {
+        return Direction::DownRight;
+    } else if (observation >= 2.0_f64 * PI - MARGIN && observation < 2.0_f64 * PI) {
+        return Direction::Right;
+    }
+    panic!("Unknown angle: {}", observation);
+}
+
+fn get_centripetal_direction(previous: &Point, current: &Point, centroid: &Point) -> Direction {
+    if distance(&previous, &centroid) > distance(&current, &centroid) {
+        return Direction::In;
+    }
+    return Direction::Out;
 }
