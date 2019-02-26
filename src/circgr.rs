@@ -16,7 +16,6 @@ pub enum Direction {
     Out,
     Clockwise,
     CounterClockwise,
-    MAX_DIRECTIONS,
 }
 
 #[derive(Default, Builder, Debug, Clone, PartialEq)]
@@ -48,7 +47,7 @@ pub struct TemporalEvents {
     start_time: u64,
     end_time: u64,
     duration: u64,
-    resultants: HashMap<Direction, ResultantVector>,
+    observations: HashMap<Direction, Vec<f64>>,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
@@ -104,7 +103,50 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
 
     // Real work done here. Resample each trace and break it down into each direction
     // for every point.
-    for (id, points) in raw_traces {}
+    let mut dir_cos_map = HashMap::new();
+    let mut dir_sin_map = HashMap::new();
+    let mut directional_events = HashMap::new();
+    let mut temporal_events = HashMap::new();
+    for (id, points) in raw_traces {
+        gesture.traces.insert(
+            *id,
+            process_trace(
+                &points[..],
+                &gesture.centroid,
+                &trace_info[id],
+                sample_resolution,
+                &mut dir_cos_map,
+                &mut dir_sin_map,
+                &mut directional_events,
+                &mut temporal_events,
+            ),
+        );
+    }
+
+    let mut resultants = HashMap::new();
+    for direction in dir_cos_map.keys() {
+        resultants.insert(
+            direction.clone(),
+            calculate_resultant(
+                dir_sin_map[direction],
+                dir_cos_map[direction],
+                directional_events[direction].len(),
+            ),
+        );
+    }
+
+    let mut gc = 0.0_f64;
+    let mut gs = 0.0_f64;
+    for trace in gesture.traces.values() {
+        gc += trace.resultant.angle.cos();
+        gs += trace.resultant.angle.sin();
+    }
+
+    gesture.resultant = calculate_resultant(gs, gc, gesture.anchors.len() + gesture.traces.len());
+    gesture.directional_events = DirectionalEvents {
+        observations: directional_events,
+        resultants: resultants,
+    };
 
     gesture
 }
@@ -257,13 +299,7 @@ fn process_trace(
         }
     }
 
-    let angle = trace_sin.atan2(trace_cos);
-    let magnitude = (trace_cos.powf(2.0_f64) + trace_sin.powf(2.0_f64)).sqrt();
-    trace.resultant = ResultantVector {
-        angle: angle,
-        magnitude: magnitude,
-        dispersion: trace.observations.len() as f64 - magnitude,
-    };
+    trace.resultant = calculate_resultant(trace_sin, trace_cos, trace.observations.len());
 
     return trace;
 }
@@ -342,5 +378,18 @@ fn get_rotational_direction(previous: f64, current: f64) -> Direction {
         } else {
             return Direction::Clockwise;
         }
+    }
+}
+
+fn calculate_resultant(sin: f64, cos: f64, len: usize) -> ResultantVector {
+    let point = PointBuilder::default().x(cos).y(sin).build().unwrap();
+    let angle = compute_observation(&Point::default(), &point);
+    let magnitude = distance(&Point::default(), &point);
+    let dispersion = len as f64 - magnitude;
+
+    ResultantVector {
+        angle: angle,
+        magnitude: magnitude,
+        dispersion: dispersion,
     }
 }
