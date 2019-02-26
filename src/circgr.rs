@@ -21,50 +21,50 @@ pub enum Direction {
 #[derive(Default, Builder, Debug, Clone, PartialEq)]
 #[builder(setter(into))]
 pub struct Point {
-    x: f64,
-    y: f64,
-    timestamp: u64,
+    pub x: f64,
+    pub y: f64,
+    pub timestamp: u64,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct ResultantVector {
-    angle: f64,
-    magnitude: f64,
-    dispersion: f64,
+    pub angle: f64,
+    pub magnitude: f64,
+    pub dispersion: f64,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct DirectionalEvents {
-    observations: HashMap<Direction, Vec<f64>>,
-    resultants: HashMap<Direction, ResultantVector>,
+    pub observations: HashMap<Direction, Vec<f64>>,
+    pub resultants: HashMap<Direction, ResultantVector>,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct TemporalEvents {
-    start_time: u64,
-    end_time: u64,
-    duration: u64,
-    observations: HashMap<Direction, Vec<f64>>,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub duration: u64,
+    pub observations: HashMap<Direction, Vec<f64>>,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct Trace {
-    observations: Vec<f64>,
-    resultant: ResultantVector,
+    pub observations: Vec<f64>,
+    pub resultant: ResultantVector,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct Gesture {
-    traces: HashMap<u32, Trace>,
-    anchors: HashMap<u32, Point>,
-    centroid: Point,
-    resultant: ResultantVector,
-    temporal_events: TemporalEvents,
-    directional_events: DirectionalEvents,
+    pub traces: HashMap<u32, Trace>,
+    pub anchors: HashMap<u32, Point>,
+    pub centroid: Point,
+    pub resultant: ResultantVector,
+    pub temporal_events: TemporalEvents,
+    pub directional_events: DirectionalEvents,
 }
 
 impl Gesture {
