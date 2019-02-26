@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::f64::consts::PI;
 use std::vec::Vec;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -23,7 +24,7 @@ pub enum Direction {
 pub struct Point {
     x: f64,
     y: f64,
-    timestamp: u32,
+    timestamp: u64,
 }
 
 #[derive(Default, Builder, Debug, Clone)]
@@ -44,9 +45,9 @@ pub struct DirectionalEvents {
 #[derive(Default, Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct TemporalEvents {
-    start_time: u32,
-    end_time: u32,
-    duration: u32,
+    start_time: u64,
+    end_time: u64,
+    duration: u64,
     resultants: HashMap<Direction, ResultantVector>,
 }
 
@@ -116,8 +117,8 @@ fn distance(a: &Point, b: &Point) -> f64 {
 struct TraceInfo {
     path_length: f64,
     centroid: Point,
-    start_time: u32,
-    end_time: u32,
+    start_time: u64,
+    end_time: u64,
 }
 
 fn preprocess_trace(points: &[Point]) -> TraceInfo {
@@ -166,13 +167,15 @@ fn process_trace(
     centroid: &Point,
     info: &TraceInfo,
     sample_resolution: u32,
-) -> (Trace, DirectionalEvents, TemporalEvents) {
+    dir_cos_map: &mut HashMap<Direction, f64>,
+    dir_sin_map: &mut HashMap<Direction, f64>,
+    directional_events: &mut HashMap<Direction, Vec<f64>>,
+    temporal_events: &mut HashMap<Direction, Vec<f64>>,
+) -> Trace {
     let interval = info.path_length / sample_resolution as f64;
     let mut d = 0.0_f64;
     let mut trace_cos = 0.0_f64;
     let mut trace_sin = 0.0_f64;
-    let mut directional_events = DirectionalEvents::default();
-    let mut temporal_events = TemporalEvents::default();
     let mut trace = Trace::default();
 
     let mut previous_observation = 0.0_f64;
@@ -188,34 +191,93 @@ fn process_trace(
                 let point = PointBuilder::default()
                     .x((1.0_f64 - t) * previous_point.x + t * points[i].x)
                     .y((1.0_f64 - t) * previous_point.y + t * points[i].y)
+                    .timestamp(points[i].timestamp)
                     .build()
                     .unwrap();
 
                 let observation = compute_observation(&previous_point, &point);
+                trace.observations.push(observation.clone());
                 let (sin, cos) = observation.sin_cos();
                 trace_cos += cos;
                 trace_sin += sin;
-                let direction = get_direction(observation);
+                let direction = get_direction(observation.clone());
                 let cdirection = get_centripetal_direction(&previous_point, &point, &info.centroid);
+                *dir_cos_map.entry(direction.clone()).or_insert(0.0_f64) += cos;
+                *dir_sin_map.entry(direction.clone()).or_insert(0.0_f64) += sin;
+                *dir_cos_map.entry(cdirection.clone()).or_insert(0.0_f64) += cos;
+                *dir_sin_map.entry(cdirection.clone()).or_insert(0.0_f64) += sin;
+                directional_events
+                    .entry(direction.clone())
+                    .or_insert(Vec::new())
+                    .push(observation.clone());
+                directional_events
+                    .entry(cdirection.clone())
+                    .or_insert(Vec::new())
+                    .push(observation.clone());
 
+                let temporal_observation =
+                    compute_temporal_observation(point.timestamp, info.start_time, info.end_time);
+                temporal_events
+                    .entry(direction)
+                    .or_insert(Vec::new())
+                    .push(temporal_observation.clone());
+                temporal_events
+                    .entry(cdirection)
+                    .or_insert(Vec::new())
+                    .push(temporal_observation.clone());
+
+                if previous_observation > 0.0_f64 {
+                    let clock_direction =
+                        get_rotational_direction(previous_observation, observation);
+                    *dir_cos_map
+                        .entry(clock_direction.clone())
+                        .or_insert(0.0_f64) += cos;
+                    *dir_sin_map
+                        .entry(clock_direction.clone())
+                        .or_insert(0.0_f64) += sin;
+                    directional_events
+                        .entry(clock_direction.clone())
+                        .or_insert(Vec::new())
+                        .push(observation);
+                    temporal_events
+                        .entry(clock_direction)
+                        .or_insert(Vec::new())
+                        .push(temporal_observation);
+                }
+
+                previous_observation = observation;
+
+                // Update partial length
+                distance = d + distance - interval;
+                d = 0.0_f64;
+                previous_point = point;
             }
+        } else {
+            d += distance;
         }
     }
 
-    return (trace, directional_events, temporal_events);
+    let angle = trace_sin.atan2(trace_cos);
+    let magnitude = (trace_cos.powf(2.0_f64) + trace_sin.powf(2.0_f64)).sqrt();
+    trace.resultant = ResultantVector {
+        angle: angle,
+        magnitude: magnitude,
+        dispersion: trace.observations.len() as f64 - magnitude,
+    };
+
+    return trace;
 }
 
 fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
     let mut angle = (point.y - previous_point.y).atan2(point.x - previous_point.x);
     if (angle < 0.0_f64) {
-        angle += (2.0_f64 * std::f64::consts::PI);
+        angle += (2.0_f64 * PI);
     }
 
     angle
 }
 
 fn get_direction(mut observation: f64) -> Direction {
-    use std::f64::consts::PI;
     const MARGIN: f64 = PI / 18.0_f64;
     const PI_OVER_2: f64 = PI / 2.0_f64;
     const THREE_PI_OVER_4: f64 = 3.0_f64 * PI / 4.0_f64;
@@ -236,9 +298,9 @@ fn get_direction(mut observation: f64) -> Direction {
         return Direction::DownLeft;
     } else if (observation >= THREE_PI_OVER_4 - MARGIN && observation > THREE_PI_OVER_4 + MARGIN) {
         return Direction::Down;
-    } else if (observation >= THREE_PI_OVER_4 + MARGIN && observation > 2.0_f64 * PI - MARGIN) {
+    } else if (observation >= THREE_PI_OVER_4 + MARGIN && observation > (2.0_f64 * PI) - MARGIN) {
         return Direction::DownRight;
-    } else if (observation >= 2.0_f64 * PI - MARGIN && observation < 2.0_f64 * PI) {
+    } else if (observation >= (2.0_f64 * PI) - MARGIN && observation < 2.0_f64 * PI) {
         return Direction::Right;
     }
     panic!("Unknown angle: {}", observation);
@@ -249,4 +311,36 @@ fn get_centripetal_direction(previous: &Point, current: &Point, centroid: &Point
         return Direction::In;
     }
     return Direction::Out;
+}
+
+fn compute_temporal_observation(time: u64, start_time: u64, end_time: u64) -> f64 {
+    if time > end_time || time < start_time {
+        panic!(
+            "Time not in range: {} < {} < {}",
+            start_time, time, end_time
+        );
+    }
+    return ((time - start_time) / (end_time - start_time)) as f64 * (2.0_f64 * PI);
+}
+
+fn get_rotational_direction(previous: f64, current: f64) -> Direction {
+    let max_ccw = previous + PI;
+
+    if max_ccw < (2.0_f64 * PI) - 1.0_f64.to_radians() {
+        if previous <= current && current <= max_ccw {
+            return Direction::CounterClockwise;
+        } else {
+            return Direction::Clockwise;
+        }
+    } else {
+        let split = (2.0_f64 * PI) - previous;
+        let adjusted = max_ccw - (2.0_f64 * PI);
+        if (previous <= current && current <= 2.0_f64 * PI)
+            || (0.0_f64 <= current && current <= adjusted)
+        {
+            return Direction::CounterClockwise;
+        } else {
+            return Direction::Clockwise;
+        }
+    }
 }
