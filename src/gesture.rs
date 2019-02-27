@@ -59,6 +59,7 @@ pub struct Trace {
 
 #[derive(Default, Debug, Clone)]
 pub struct Gesture {
+    pub name: String,
     pub traces: HashMap<u32, Trace>,
     pub anchors: HashMap<u32, Point>,
     pub centroid: Point,
