@@ -244,7 +244,7 @@ fn process_trace(
                 trace_cos += cos;
                 trace_sin += sin;
                 let direction = get_direction(observation.clone());
-                let cdirection = get_centripetal_direction(&previous_point, &point, &info.centroid);
+                let cdirection = get_centripetal_direction(&previous_point, &point, &centroid);
                 *dir_cos_map.entry(direction.clone()).or_insert(0.0_f64) += cos;
                 *dir_sin_map.entry(direction.clone()).or_insert(0.0_f64) += sin;
                 *dir_cos_map.entry(cdirection.clone()).or_insert(0.0_f64) += cos;
@@ -307,8 +307,8 @@ fn process_trace(
 
 fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
     let mut angle = (point.y - previous_point.y).atan2(point.x - previous_point.x);
-    if (angle < 0.0_f64) {
-        angle += (2.0_f64 * PI);
+    if angle < 0.0_f64 {
+        angle += 2.0_f64 * PI;
     }
 
     angle
@@ -321,23 +321,23 @@ fn get_direction(mut observation: f64) -> Direction {
 
     observation %= 2.0_f64 * PI;
 
-    if (observation >= 0.0_f64 && observation < MARGIN) {
+    if observation >= 0.0_f64 && observation < MARGIN {
         return Direction::Right;
-    } else if (observation >= MARGIN && observation < PI_OVER_2 - MARGIN) {
+    } else if observation >= MARGIN && observation < PI_OVER_2 - MARGIN {
         return Direction::UpRight;
-    } else if (observation >= PI_OVER_2 - MARGIN && observation < PI_OVER_2 + MARGIN) {
+    } else if observation >= PI_OVER_2 - MARGIN && observation < PI_OVER_2 + MARGIN {
         return Direction::Up;
-    } else if (observation >= PI_OVER_2 + MARGIN && observation < PI - MARGIN) {
+    } else if observation >= PI_OVER_2 + MARGIN && observation < PI - MARGIN {
         return Direction::UpLeft;
-    } else if (observation >= PI - MARGIN && observation < PI + MARGIN) {
+    } else if observation >= PI - MARGIN && observation < PI + MARGIN {
         return Direction::Left;
-    } else if (observation >= PI + MARGIN && observation < THREE_PI_OVER_4 - MARGIN) {
+    } else if observation >= PI + MARGIN && observation < THREE_PI_OVER_4 - MARGIN {
         return Direction::DownLeft;
-    } else if (observation >= THREE_PI_OVER_4 - MARGIN && observation > THREE_PI_OVER_4 + MARGIN) {
+    } else if observation >= THREE_PI_OVER_4 - MARGIN && observation > THREE_PI_OVER_4 + MARGIN {
         return Direction::Down;
-    } else if (observation >= THREE_PI_OVER_4 + MARGIN && observation > (2.0_f64 * PI) - MARGIN) {
+    } else if observation >= THREE_PI_OVER_4 + MARGIN && observation > (2.0_f64 * PI) - MARGIN {
         return Direction::DownRight;
-    } else if (observation >= (2.0_f64 * PI) - MARGIN && observation < 2.0_f64 * PI) {
+    } else if observation >= (2.0_f64 * PI) - MARGIN && observation < 2.0_f64 * PI {
         return Direction::Right;
     }
     panic!("Unknown angle: {}", observation);
@@ -370,7 +370,6 @@ fn get_rotational_direction(previous: f64, current: f64) -> Direction {
             return Direction::Clockwise;
         }
     } else {
-        let split = (2.0_f64 * PI) - previous;
         let adjusted = max_ccw - (2.0_f64 * PI);
         if (previous <= current && current <= 2.0_f64 * PI)
             || (0.0_f64 <= current && current <= adjusted)

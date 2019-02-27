@@ -15,7 +15,7 @@ impl Classifier {
         classify_impl(&gesture, &self.templates[..])
     }
 
-    pub fn add_template(mut self, mut template: Gesture) {
+    pub fn add_template(mut self, template: Gesture) {
         self.templates.push(template);
     }
 }
@@ -37,6 +37,7 @@ fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<String> {
 
         if min > distance {
             name = template.name.clone();
+            min = distance;
         }
     }
 
