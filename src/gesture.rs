@@ -26,7 +26,7 @@ pub struct Point {
     pub timestamp: u64,
 }
 
-#[derive(Default, Builder, Debug, Clone)]
+#[derive(Default, Builder, Debug, Clone, PartialEq)]
 #[builder(setter(into))]
 pub struct ResultantVector {
     pub angle: f64,
@@ -34,14 +34,14 @@ pub struct ResultantVector {
     pub dispersion: f64,
 }
 
-#[derive(Default, Builder, Debug, Clone)]
+#[derive(Default, Builder, Debug, Clone, PartialEq)]
 #[builder(setter(into))]
 pub struct DirectionalEvents {
     pub observations: HashMap<Direction, Vec<f64>>,
     pub resultants: HashMap<Direction, ResultantVector>,
 }
 
-#[derive(Default, Builder, Debug, Clone)]
+#[derive(Default, Builder, Debug, Clone, PartialEq)]
 #[builder(setter(into))]
 pub struct TemporalEvents {
     pub start_time: u64,
@@ -50,7 +50,7 @@ pub struct TemporalEvents {
     pub observations: HashMap<Direction, Vec<f64>>,
 }
 
-#[derive(Default, Builder, Debug, Clone)]
+#[derive(Default, Builder, Debug, Clone, PartialEq)]
 #[builder(setter(into))]
 pub struct Trace {
     pub observations: Vec<f64>,
@@ -68,7 +68,7 @@ pub struct Gesture {
 }
 
 impl Gesture {
-    fn new(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Self {
+    pub fn new(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Self {
         build_gesture(&raw_traces, sample_resolution)
     }
 }
