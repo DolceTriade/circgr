@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 derive_builder = "0.7.1"
 itertools = "0.8.0"
+serde = { version = "1.0.88", features = ["derive"] }

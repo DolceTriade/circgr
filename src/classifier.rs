@@ -11,11 +11,17 @@ pub struct Classifier {
 }
 
 impl Classifier {
+    pub fn new() -> Classifier {
+        Classifier {
+            templates: Vec::new()
+        }
+    }
+
     pub fn classify(self, gesture: &Gesture) -> Option<String> {
         classify_impl(&gesture, &self.templates[..])
     }
 
-    pub fn add_template(mut self, template: Gesture) {
+    pub fn add_template(&mut self, template: Gesture) {
         self.templates.push(template);
     }
 }

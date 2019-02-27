@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::vec::Vec;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub enum Direction {
     Up,
     Down,
@@ -18,15 +19,15 @@ pub enum Direction {
     CounterClockwise,
 }
 
-#[derive(Default, Builder, Debug, Clone, PartialEq)]
-#[builder(setter(into))]
+#[derive(Default, Builder, Debug, Clone, PartialEq, Serialize, Deserialize)]
+//#[builder(setter(into))]
 pub struct Point {
     pub x: f64,
     pub y: f64,
     pub timestamp: u64,
 }
 
-#[derive(Default, Builder, Debug, Clone, PartialEq)]
+#[derive(Default, Builder, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[builder(setter(into))]
 pub struct ResultantVector {
     pub angle: f64,
@@ -34,14 +35,14 @@ pub struct ResultantVector {
     pub dispersion: f64,
 }
 
-#[derive(Default, Builder, Debug, Clone, PartialEq)]
+#[derive(Default, Builder, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[builder(setter(into))]
 pub struct DirectionalEvents {
     pub observations: HashMap<Direction, Vec<f64>>,
     pub resultants: HashMap<Direction, ResultantVector>,
 }
 
-#[derive(Default, Builder, Debug, Clone, PartialEq)]
+#[derive(Default, Builder, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[builder(setter(into))]
 pub struct TemporalEvents {
     pub start_time: u64,
@@ -50,14 +51,14 @@ pub struct TemporalEvents {
     pub observations: HashMap<Direction, Vec<f64>>,
 }
 
-#[derive(Default, Builder, Debug, Clone, PartialEq)]
+#[derive(Default, Builder, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[builder(setter(into))]
 pub struct Trace {
     pub observations: Vec<f64>,
     pub resultant: ResultantVector,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Gesture {
     pub name: String,
     pub traces: HashMap<u32, Trace>,
@@ -382,7 +383,7 @@ fn get_rotational_direction(previous: f64, current: f64) -> Direction {
 }
 
 fn calculate_resultant(sin: f64, cos: f64, len: usize) -> ResultantVector {
-    let point = PointBuilder::default().x(cos).y(sin).build().unwrap();
+    let point = PointBuilder::default().x(cos).y(sin).timestamp(0).build().unwrap();
     let angle = compute_observation(&Point::default(), &point);
     let magnitude = distance(&Point::default(), &point);
     let dispersion = len as f64 - magnitude;
