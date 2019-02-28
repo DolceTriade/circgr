@@ -110,6 +110,9 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
     let mut directional_events = HashMap::new();
     let mut temporal_events = HashMap::new();
     for (id, points) in raw_traces {
+        if gesture.anchors.contains_key(id) {
+            continue;
+        }
         gesture.traces.insert(
             *id,
             process_trace(
