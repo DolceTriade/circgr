@@ -47,6 +47,10 @@ fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, f6
         }
     }
 
+    if name.is_empty() {
+        return None;
+    }
+
     return Some((name, min));
 }
 

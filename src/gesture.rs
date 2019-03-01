@@ -47,7 +47,6 @@ pub struct DirectionalEvents {
 pub struct TemporalEvents {
     pub start_time: u64,
     pub end_time: u64,
-    pub duration: u64,
     pub observations: HashMap<Direction, Vec<f64>>,
 }
 
@@ -78,6 +77,8 @@ impl Gesture {
 fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) -> Gesture {
     let mut gesture = Gesture::default();
     let mut trace_info: HashMap<u32, TraceInfo> = HashMap::default();
+    let mut start_time = std::u64::MAX;
+    let mut end_time = 0_u64;
 
     // Preprocess the trace to find basic metadata like start/end times, path length, and centroid.
     // Also decide if each trace will be an anchor. An anchor is a trace that moves less than the
@@ -86,6 +87,8 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
         trace_info.insert(*id, preprocess_trace(&points));
         let info = &trace_info[id];
         let interval = info.path_length / sample_resolution as f64;
+        start_time = start_time.min(info.start_time);
+        end_time = end_time.max(info.end_time);
         if interval < 0.5_f64 {
             gesture.anchors.insert(*id, info.centroid.clone());
             continue;
@@ -151,6 +154,11 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
     gesture.directional_events = DirectionalEvents {
         observations: directional_events,
         resultants: resultants,
+    };
+    gesture.temporal_events = TemporalEvents {
+        start_time: start_time,
+        end_time: end_time,
+        observations: temporal_events,
     };
 
     gesture
