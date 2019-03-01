@@ -92,7 +92,7 @@ fn direction_distance(gesture: &Gesture, template: &Gesture, direction: Directio
     distance += sum;
 
     distance += match cdirectional.len() {
-        min_len => {
+        _ if cdirectional.len() == min_len => {
             &tdirectional[min_len..]
                 .iter()
                 .map(|x| -> f64 { observation_distance(*x, cresultant) })
