@@ -17,7 +17,7 @@ impl Classifier {
         }
     }
 
-    pub fn classify(self, gesture: &Gesture) -> Option<String> {
+    pub fn classify(&self, gesture: &Gesture) -> Option<(String, f64)> {
         classify_impl(&gesture, &self.templates[..])
     }
 
@@ -26,7 +26,7 @@ impl Classifier {
     }
 }
 
-fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<String> {
+fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, f64)> {
     let mut min = std::f64::MAX;
     let mut name = "".to_string();
     for template in templates {
@@ -47,7 +47,7 @@ fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<String> {
         }
     }
 
-    return Some(name);
+    return Some((name, min));
 }
 
 fn direction_distance(gesture: &Gesture, template: &Gesture, direction: Direction) -> f64 {
