@@ -306,7 +306,12 @@ fn process_trace(
 
                 // Update partial length
                 distance = d + distance - interval;
-                d = 0.0_f64;
+                if distance < interval {
+                    d = distance;
+                    distance = 0.0_f64;
+                } else {
+                    d = 0.0_f64;
+                }
                 previous_resampled_point = point.clone();
                 previous_point = point;
             }
