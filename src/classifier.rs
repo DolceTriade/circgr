@@ -13,7 +13,7 @@ pub struct Classifier {
 impl Classifier {
     pub fn new() -> Classifier {
         Classifier {
-            templates: Vec::new()
+            templates: Vec::new(),
         }
     }
 

@@ -234,6 +234,7 @@ fn process_trace(
     let mut trace = Trace::default();
 
     let mut previous_observation = 0.0_f64;
+    let mut previous_resampled_point = points[0].clone();
 
     for i in 1..points.len() {
         let mut distance = distance(&points[i], &points[i - 1]);
@@ -250,13 +251,14 @@ fn process_trace(
                     .build()
                     .unwrap();
 
-                let observation = compute_observation(&previous_point, &point);
+                let observation = compute_observation(&previous_resampled_point, &point);
                 trace.observations.push(observation.clone());
                 let (sin, cos) = observation.sin_cos();
                 trace_cos += cos;
                 trace_sin += sin;
                 let direction = get_direction(observation.clone());
-                let cdirection = get_centripetal_direction(&previous_point, &point, &centroid);
+                let cdirection =
+                    get_centripetal_direction(&previous_resampled_point, &point, &centroid);
                 *dir_cos_map.entry(direction.clone()).or_insert(0.0_f64) += cos;
                 *dir_sin_map.entry(direction.clone()).or_insert(0.0_f64) += sin;
                 *dir_cos_map.entry(cdirection.clone()).or_insert(0.0_f64) += cos;
@@ -305,6 +307,7 @@ fn process_trace(
                 // Update partial length
                 distance = d + distance - interval;
                 d = 0.0_f64;
+                previous_resampled_point = point.clone();
                 previous_point = point;
             }
         } else {
@@ -394,7 +397,12 @@ fn get_rotational_direction(previous: f64, current: f64) -> Direction {
 }
 
 fn calculate_resultant(sin: f64, cos: f64, len: usize) -> ResultantVector {
-    let point = PointBuilder::default().x(cos).y(sin).timestamp(0).build().unwrap();
+    let point = PointBuilder::default()
+        .x(cos)
+        .y(sin)
+        .timestamp(0)
+        .build()
+        .unwrap();
     let angle = compute_observation(&Point::default(), &point);
     let magnitude = distance(&Point::default(), &point);
     let dispersion = len as f64 - magnitude;
