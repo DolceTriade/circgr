@@ -353,9 +353,9 @@ fn get_direction(mut observation: f64) -> Direction {
         return Direction::Left;
     } else if observation >= PI + MARGIN && observation < THREE_PI_OVER_4 - MARGIN {
         return Direction::DownLeft;
-    } else if observation >= THREE_PI_OVER_4 - MARGIN && observation > THREE_PI_OVER_4 + MARGIN {
+    } else if observation >= THREE_PI_OVER_4 - MARGIN && observation < THREE_PI_OVER_4 + MARGIN {
         return Direction::Down;
-    } else if observation >= THREE_PI_OVER_4 + MARGIN && observation > (2.0_f64 * PI) - MARGIN {
+    } else if observation >= THREE_PI_OVER_4 + MARGIN && observation < (2.0_f64 * PI) - MARGIN {
         return Direction::DownRight;
     } else if observation >= (2.0_f64 * PI) - MARGIN && observation < 2.0_f64 * PI {
         return Direction::Right;
