@@ -89,7 +89,7 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
         let interval = info.path_length / sample_resolution as f64;
         start_time = start_time.min(info.start_time);
         end_time = end_time.max(info.end_time);
-        if interval < 0.5_f64 {
+        if interval < 0.175_f64 {
             gesture.anchors.insert(*id, info.centroid.clone());
             continue;
         }
