@@ -55,6 +55,8 @@ pub struct TemporalEvents {
 pub struct Trace {
     pub observations: Vec<f64>,
     pub resultant: ResultantVector,
+    pub temporal_events: TemporalEvents,
+    pub directional_events: DirectionalEvents,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -64,8 +66,6 @@ pub struct Gesture {
     pub anchors: HashMap<u32, Point>,
     pub centroid: Point,
     pub resultant: ResultantVector,
-    pub temporal_events: TemporalEvents,
-    pub directional_events: DirectionalEvents,
 }
 
 impl Gesture {
@@ -108,10 +108,6 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
 
     // Real work done here. Resample each trace and break it down into each direction
     // for every point.
-    let mut dir_cos_map = HashMap::new();
-    let mut dir_sin_map = HashMap::new();
-    let mut directional_events = HashMap::new();
-    let mut temporal_events = HashMap::new();
     for (id, points) in raw_traces {
         if gesture.anchors.contains_key(id) {
             continue;
@@ -123,22 +119,6 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
                 &gesture.centroid,
                 &trace_info[id],
                 sample_resolution,
-                &mut dir_cos_map,
-                &mut dir_sin_map,
-                &mut directional_events,
-                &mut temporal_events,
-            ),
-        );
-    }
-
-    let mut resultants = HashMap::new();
-    for direction in dir_cos_map.keys() {
-        resultants.insert(
-            direction.clone(),
-            calculate_resultant(
-                dir_sin_map[direction],
-                dir_cos_map[direction],
-                directional_events[direction].len(),
             ),
         );
     }
@@ -151,16 +131,6 @@ fn build_gesture(raw_traces: &HashMap<u32, Vec<Point>>, sample_resolution: u32) 
     }
 
     gesture.resultant = calculate_resultant(gs, gc, gesture.anchors.len() + gesture.traces.len());
-    gesture.directional_events = DirectionalEvents {
-        observations: directional_events,
-        resultants: resultants,
-    };
-    gesture.temporal_events = TemporalEvents {
-        start_time: start_time,
-        end_time: end_time,
-        observations: temporal_events,
-    };
-
     gesture
 }
 
@@ -222,16 +192,14 @@ fn process_trace(
     centroid: &Point,
     info: &TraceInfo,
     sample_resolution: u32,
-    dir_cos_map: &mut HashMap<Direction, f64>,
-    dir_sin_map: &mut HashMap<Direction, f64>,
-    directional_events: &mut HashMap<Direction, Vec<f64>>,
-    temporal_events: &mut HashMap<Direction, Vec<f64>>,
 ) -> Trace {
     let interval = info.path_length / sample_resolution as f64;
     let mut d = 0.0_f64;
     let mut trace_cos = 0.0_f64;
     let mut trace_sin = 0.0_f64;
     let mut trace = Trace::default();
+    let directional_events = &mut trace.directional_events.observations;
+    let temporal_events = &mut trace.temporal_events.observations;
 
     let mut previous_observation = 0.0_f64;
     let mut previous_resampled_point = points[0].clone();
@@ -259,10 +227,6 @@ fn process_trace(
                 let direction = get_direction(observation.clone());
                 let cdirection =
                     get_centripetal_direction(&previous_resampled_point, &point, &centroid);
-                *dir_cos_map.entry(direction.clone()).or_insert(0.0_f64) += cos;
-                *dir_sin_map.entry(direction.clone()).or_insert(0.0_f64) += sin;
-                *dir_cos_map.entry(cdirection.clone()).or_insert(0.0_f64) += cos;
-                *dir_sin_map.entry(cdirection.clone()).or_insert(0.0_f64) += sin;
                 directional_events
                     .entry(direction.clone())
                     .or_insert(Vec::new())
@@ -286,12 +250,7 @@ fn process_trace(
                 if previous_observation > 0.0_f64 {
                     let clock_direction =
                         get_rotational_direction(previous_observation, observation);
-                    *dir_cos_map
-                        .entry(clock_direction.clone())
-                        .or_insert(0.0_f64) += cos;
-                    *dir_sin_map
-                        .entry(clock_direction.clone())
-                        .or_insert(0.0_f64) += sin;
+                    println!("{:?}", &clock_direction);
                     directional_events
                         .entry(clock_direction.clone())
                         .or_insert(Vec::new())
@@ -335,7 +294,7 @@ fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
 }
 
 fn get_direction(mut observation: f64) -> Direction {
-    const MARGIN: f64 = PI / 18.0_f64;
+    const MARGIN: f64 = PI / 12.0_f64;
     const PI_OVER_2: f64 = PI / 2.0_f64;
     const THREE_PI_OVER_2: f64 = 3.0_f64 * PI / 2.0_f64;
 

@@ -1,7 +1,5 @@
-use crate::gesture::{Direction, Gesture};
-use itertools::izip;
+use crate::gesture::{Direction, Gesture, Trace};
 use std::collections::HashSet;
-use std::f64::consts::PI;
 use std::iter::FromIterator;
 use std::iter::Iterator;
 use std::vec::Vec;
@@ -17,7 +15,7 @@ impl Classifier {
         }
     }
 
-    pub fn classify(&self, gesture: &Gesture) -> Option<(String, f64)> {
+    pub fn classify(&self, gesture: &Gesture) -> Option<(String, usize)> {
         classify_impl(&gesture, &self.templates[..])
     }
 
@@ -26,8 +24,8 @@ impl Classifier {
     }
 }
 
-fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, f64)> {
-    let mut min = std::f64::MAX;
+fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, usize)> {
+    let mut min = std::usize::MAX;
     let mut name = "".to_string();
     for template in templates {
         if template.anchors.len() != gesture.anchors.len()
@@ -36,9 +34,9 @@ fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, f6
             continue;
         }
 
-        let mut distance = 0.0_f64;
-        for direction in all_directions(gesture, template) {
-            distance += direction_distance(&gesture, &template, direction)
+        let mut distance = 0_usize;
+        for trace_pair in pair_traces(&gesture, &template) {
+            distance += trace_pair.2;
         }
 
         if min > distance {
@@ -54,68 +52,7 @@ fn classify_impl(gesture: &Gesture, templates: &[Gesture]) -> Option<(String, f6
     return Some((name, min));
 }
 
-fn direction_distance(gesture: &Gesture, template: &Gesture, direction: Direction) -> f64 {
-    let mut distance = 0.0_f64;
-    let empty: Vec<f64> = Vec::new();
-    let cresultant = match gesture.directional_events.resultants.get(&direction) {
-        Some(a) => a.angle,
-        None => 0.0_f64,
-    };
-    let tresultant = match template.directional_events.resultants.get(&direction) {
-        Some(a) => a.angle,
-        None => 0.0_f64,
-    };
-    let cdirectional = match gesture.directional_events.observations.get(&direction) {
-        Some(a) => a,
-        None => &empty,
-    };
-    let tdirectional = match template.directional_events.observations.get(&direction) {
-        Some(a) => a,
-        None => &empty,
-    };
-    let ctemporal = match gesture.temporal_events.observations.get(&direction) {
-        Some(a) => a,
-        None => &empty,
-    };
-    let ttemporal = match template.temporal_events.observations.get(&direction) {
-        Some(a) => a,
-        None => &empty,
-    };
-
-    let min_len = std::cmp::min(cdirectional.len(), tdirectional.len());
-
-    let sum: f64 = izip!(
-        &cdirectional[..min_len],
-        &tdirectional[..min_len],
-        &ctemporal[..min_len],
-        &ttemporal[..min_len]
-    )
-    .map(|x| -> f64 { observation_distance(*x.0, *x.1) + observation_distance(*x.2, *x.3) })
-    .sum();
-
-    distance += sum;
-
-    distance += match cdirectional.len() {
-        _ if cdirectional.len() == min_len => {
-            &tdirectional[min_len..]
-                .iter()
-                .map(|x| -> f64 { observation_distance(*x, cresultant) })
-                .sum()
-                + (tdirectional.len() - min_len) as f64 * PI
-        }
-        _ => {
-            &cdirectional[min_len..]
-                .iter()
-                .map(|x| -> f64 { observation_distance(*x, tresultant) })
-                .sum()
-                + (cdirectional.len() - min_len) as f64 * PI
-        }
-    };
-
-    return distance;
-}
-
-fn all_directions(a: &Gesture, b: &Gesture) -> HashSet<Direction> {
+fn all_directions(a: &Trace, b: &Trace) -> HashSet<Direction> {
     HashSet::from_iter(
         a.directional_events
             .observations
@@ -125,6 +62,57 @@ fn all_directions(a: &Gesture, b: &Gesture) -> HashSet<Direction> {
     )
 }
 
-fn observation_distance(a: f64, b: f64) -> f64 {
-    PI - (PI - (a - b).abs()).abs()
+fn pair_traces<'a>(gesture: &'a Gesture, template: &'a Gesture) -> Vec<(&'a Trace, &'a Trace, usize)> {
+    let mut ret = Vec::new();
+    let mut paired = HashSet::new();
+    for trace in gesture.traces.values() {
+        let mut min = std::usize::MAX;
+        let mut best = trace;
+        let mut id = 0;
+        for ttrace in &template.traces {
+            if paired.contains(ttrace.0) {
+                continue;
+            }
+            let score = trace_similiarity(&trace, &ttrace.1);
+            println!("Trace similarity: {}", &score);
+            if score < min {
+                min = score;
+                best = &ttrace.1;
+                id = *ttrace.0;
+            }
+        }
+        paired.insert(id);
+        println!("Pairing {:#?} {:#?} => {}", print_directions(&trace), print_directions(&best), &min);
+        ret.push((trace, best, min));
+    }
+    ret
+}
+
+fn trace_similiarity(a: &Trace, b: &Trace) -> usize {
+    let mut distance = 0;
+    let empty = Vec::new();
+    for direction in all_directions(a, b) {
+        let a_len = a
+            .directional_events
+            .observations
+            .get(&direction)
+            .unwrap_or(&empty)
+            .len();
+        let b_len = b
+            .directional_events
+            .observations
+            .get(&direction)
+            .unwrap_or(&empty)
+            .len();
+        distance += a_len.max(b_len) - a_len.min(b_len);
+    }
+    distance
+}
+
+fn print_directions(trace: &Trace) -> String {
+    let mut s = String::new();
+    for kv in &trace.directional_events.observations {
+        s.push_str(&format!("{:?}={} ", kv.0, kv.1.len()));
+    }
+    s
 }
