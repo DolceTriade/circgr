@@ -337,7 +337,7 @@ fn compute_observation(previous_point: &Point, point: &Point) -> f64 {
 fn get_direction(mut observation: f64) -> Direction {
     const MARGIN: f64 = PI / 18.0_f64;
     const PI_OVER_2: f64 = PI / 2.0_f64;
-    const THREE_PI_OVER_4: f64 = 3.0_f64 * PI / 4.0_f64;
+    const THREE_PI_OVER_2: f64 = 3.0_f64 * PI / 2.0_f64;
 
     observation %= 2.0_f64 * PI;
 
@@ -351,11 +351,11 @@ fn get_direction(mut observation: f64) -> Direction {
         return Direction::UpLeft;
     } else if observation >= PI - MARGIN && observation < PI + MARGIN {
         return Direction::Left;
-    } else if observation >= PI + MARGIN && observation < THREE_PI_OVER_4 - MARGIN {
+    } else if observation >= PI + MARGIN && observation < THREE_PI_OVER_2 - MARGIN {
         return Direction::DownLeft;
-    } else if observation >= THREE_PI_OVER_4 - MARGIN && observation < THREE_PI_OVER_4 + MARGIN {
+    } else if observation >= THREE_PI_OVER_2 - MARGIN && observation < THREE_PI_OVER_2 + MARGIN {
         return Direction::Down;
-    } else if observation >= THREE_PI_OVER_4 + MARGIN && observation < (2.0_f64 * PI) - MARGIN {
+    } else if observation >= THREE_PI_OVER_2 + MARGIN && observation < (2.0_f64 * PI) - MARGIN {
         return Direction::DownRight;
     } else if observation >= (2.0_f64 * PI) - MARGIN && observation < 2.0_f64 * PI {
         return Direction::Right;
