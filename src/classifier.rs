@@ -74,7 +74,6 @@ fn pair_traces<'a>(gesture: &'a Gesture, template: &'a Gesture) -> Vec<(&'a Trac
                 continue;
             }
             let score = trace_similiarity(&trace, &ttrace.1);
-            println!("Trace similarity: {}", &score);
             if score < min {
                 min = score;
                 best = &ttrace.1;
@@ -82,7 +81,6 @@ fn pair_traces<'a>(gesture: &'a Gesture, template: &'a Gesture) -> Vec<(&'a Trac
             }
         }
         paired.insert(id);
-        println!("Pairing {:#?} {:#?} => {}", print_directions(&trace), print_directions(&best), &min);
         ret.push((trace, best, min));
     }
     ret
@@ -107,12 +105,4 @@ fn trace_similiarity(a: &Trace, b: &Trace) -> usize {
         distance += a_len.max(b_len) - a_len.min(b_len);
     }
     distance
-}
-
-fn print_directions(trace: &Trace) -> String {
-    let mut s = String::new();
-    for kv in &trace.directional_events.observations {
-        s.push_str(&format!("{:?}={} ", kv.0, kv.1.len()));
-    }
-    s
 }

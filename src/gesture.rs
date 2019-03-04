@@ -250,7 +250,6 @@ fn process_trace(
                 if previous_observation > 0.0_f64 {
                     let clock_direction =
                         get_rotational_direction(previous_observation, observation);
-                    println!("{:?}", &clock_direction);
                     directional_events
                         .entry(clock_direction.clone())
                         .or_insert(Vec::new())
